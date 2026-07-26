@@ -1,0 +1,24 @@
+# Runtime output — every audit/implement run writes here
+Reports/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# NTFS alternate data streams surfaced as files under WSL
+*:Zone.Identifier
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.bak
+
+# Pester / PSScriptAnalyzer output
+testResults*.xml
+coverage*.xml
+
+# Packaged module build artifact (rebuilt on release; lab/sample.zip is kept
+# deliberately as a docs/demo asset and is NOT ignored)
+/Invoke-ADHardening.zip

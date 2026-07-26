@@ -1,0 +1,55 @@
+"Forest","Technique","Name","Issue","Risk"
+"example.local","DETECT","example-DC01-CA","Auditing is not fully enabled on DC01.example.local\example-DC01-CA. Important security events may go unnoticed.","Medium"
+"example.local","ESC1","Example_Escalation1","EXAMPLE\Domain Users can provide a Subject Alternative Name (SAN) while
+enrolling in this Client Authentication template, and enrollment does not require
+Manager Approval.
+
+The resultant certificate can be used by an attacker to authenticate as any
+principal listed in the SAN up to and including Domain Admins, Enterprise Admins,
+or Domain Controllers.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+","Critical"
+"example.local","ESC4","Example_Escalation1","EXAMPLE\administrator has Owner rights on this template and can
+modify it into a template that can create ESC1, ESC2, and ESC3 templates.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+","Low"
+"example.local","ESC15/EKUwu","User","User uses AD CS Template Schema Version 1, and EXAMPLE\Domain Users
+is allowed to enroll in this template.
+
+If patches for CVE-2024-49019 have not been applied it may be possible to include
+arbitrary Application Policies while enrolling in this template, including
+Application Policies that permit Client Authentication or allow the creation
+of Subordinate CAs.
+
+More info:
+  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019
+","High"
+"example.local","ESC15/EKUwu","EFS","EFS uses AD CS Template Schema Version 1, and EXAMPLE\Domain Users
+is allowed to enroll in this template.
+
+If patches for CVE-2024-49019 have not been applied it may be possible to include
+arbitrary Application Policies while enrolling in this template, including
+Application Policies that permit Client Authentication or allow the creation
+of Subordinate CAs.
+
+More info:
+  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019
+","High"
+"example.local","ESC15/EKUwu","Machine","Machine uses AD CS Template Schema Version 1, and EXAMPLE\Domain Computers
+is allowed to enroll in this template.
+
+If patches for CVE-2024-49019 have not been applied it may be possible to include
+arbitrary Application Policies while enrolling in this template, including
+Application Policies that permit Client Authentication or allow the creation
+of Subordinate CAs.
+
+More info:
+  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019
+","High"

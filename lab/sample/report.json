@@ -1,0 +1,462 @@
+﻿[
+    {
+        "CheckId":  "ADH-001",
+        "CheckName":  "LLMNR Disabled",
+        "Category":  "Legacy Protocols",
+        "Severity":  "High",
+        "Status":  "Pass",
+        "Description":  "LLMNR is disabled via GPO (1 matching GPO(s) linked).",
+        "Evidence":  {
+                         "MatchingGPOs":  [
+                                              {
+                                                  "Name":  "Default Domain Policy",
+                                                  "Id":  "31b2f340-016d-11d2-945f-00c04fb984f9",
+                                                  "LinkedTo":  "example.local"
+                                              }
+                                          ],
+                         "RequiresElevation":  false,
+                         "Limitations":  "GPO inspection proves the policy exists, not that every host has applied it. A network probe (Responder analyze mode) would prove behaviour; an opt-in on-the-wire probe is on the project roadmap.",
+                         "AuditMethod":  "GPO registry-policy read (Get-GPRegistryValue + Get-GPOReport)"
+                     },
+        "AffectedObjects":  [
+
+                            ],
+        "RemediationSteps":  "",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://learn.microsoft.com/en-us/windows-server/networking/dns/deploy/disable-llmnr",
+                           "MITRE ATT\u0026CK T1557.001"
+                       ],
+        "Timestamp":  "\/Date(1783891876173)\/"
+    },
+    {
+        "CheckId":  "ADH-002",
+        "CheckName":  "Machine Account Quota = 0",
+        "Category":  "Domain Object Settings",
+        "Severity":  "High",
+        "Status":  "Pass",
+        "Description":  "ms-DS-MachineAccountQuota is 0. Standard users cannot join machines to the domain.",
+        "Evidence":  {
+                         "DomainDN":  "DC=example,DC=local",
+                         "RequiresElevation":  false,
+                         "MachineAccountQuotaValue":  0,
+                         "Limitations":  "Reads the domain-wide quota only. Per-user override via SeMachineAccountPrivilege is not enumerated here.",
+                         "AuditMethod":  "AD attribute read (ms-DS-MachineAccountQuota on the domain object)"
+                     },
+        "AffectedObjects":  [
+
+                            ],
+        "RemediationSteps":  "",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/how-to-default-local-accounts",
+                           "https://www.thehacker.recipes/ad/movement/builtin-groups#ms-ds-machineaccountquota",
+                           "MITRE ATT\u0026CK T1136.002"
+                       ],
+        "Timestamp":  "\/Date(1783891876219)\/"
+    },
+    {
+        "CheckId":  "ADH-003",
+        "CheckName":  "SMB Signing Required",
+        "Category":  "Relay Defenses",
+        "Severity":  "High",
+        "Status":  "Fail",
+        "Description":  "SMB signing not enforced by any linked GPO for: client-side (LanmanWorkstation). Hosts will accept unsigned SMB sessions, allowing NTLM relay against SMB.",
+        "Evidence":  {
+                         "AuditMethod":  "GPO inspection: named Security Option (Get-GPOReport XML) first, then registry.pol (Get-GPRegistryValue) fallback.",
+                         "ClientSideKey":  "HKLM\\System\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters\\RequireSecuritySignature",
+                         "ClientSideCovered":  false,
+                         "RequiresElevation":  false,
+                         "ServerSideCovered":  true,
+                         "ServerSideKey":  "HKLM\\System\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\RequireSecuritySignature",
+                         "Limitations":  "GPO inspection proves the policy exists, not that every host has applied it. A network probe (NetExec smb --gen-relay-list, or a manual SMB negotiate) would measure behaviour per-host; an opt-in on-the-wire probe is on the project roadmap.",
+                         "ClientSideGPOs":  [
+
+                                            ],
+                         "ServerSideGPOs":  [
+                                                {
+                                                    "Name":  "Default Domain Controllers Policy",
+                                                    "Id":  "6ac1786c-016f-11d2-945f-00c04fb984f9",
+                                                    "Side":  "Server",
+                                                    "Source":  "SecurityOption",
+                                                    "LinkedTo":  [
+                                                                     "example.local/Domain Controllers"
+                                                                 ]
+                                                }
+                                            ]
+                     },
+        "AffectedObjects":  [
+
+                            ],
+        "RemediationSteps":  "In a GPO linked at the domain level, enable the Security Options \u0027Microsoft network server: Digitally sign communications (always)\u0027 and \u0027Microsoft network client: Digitally sign communications (always)\u0027. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-003",
+        "AutoFixAvailable":  true,
+        "FixFunction":  "Set-SMBSigningRequired",
+        "References":  [
+                           "https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/overview-server-message-block-signing",
+                           "https://techcommunity.microsoft.com/blog/storageatmicrosoft/the-pitfalls-of-smb-signing/3870915",
+                           "MITRE ATT\u0026CK T1557.001"
+                       ],
+        "Timestamp":  "\/Date(1783891876298)\/"
+    },
+    {
+        "CheckId":  "ADH-004",
+        "CheckName":  "LDAP Signing + Channel Binding Enforced",
+        "Category":  "Relay Defenses",
+        "Severity":  "Critical",
+        "Status":  "Fail",
+        "Description":  "LDAP signing + channel binding is not enforced by Group Policy on the Domain Controllers OU: LDAPServerIntegrity effective value is 1 (need 2); LdapEnforceChannelBinding effective value is 0 (need 2). Unsigned LDAP and unprotected LDAPS sessions allow NTLM relay attacks to escalate to domain admin via tools like ntlmrelayx.",
+        "Evidence":  {
+                         "LDAPServerIntegrity":  {
+                                                     "Definitions":  [
+                                                                         {
+                                                                             "GpoName":  "Default Domain Controllers Policy",
+                                                                             "GpoId":  "6ac1786c-016f-11d2-945f-00c04fb984f9",
+                                                                             "OuDN":  "OU=Domain Controllers,DC=example,DC=local",
+                                                                             "Value":  1,
+                                                                             "Source":  "SecurityOption",
+                                                                             "LinkEnabled":  true
+                                                                         }
+                                                                     ],
+                                                     "Effective":  1
+                                                 },
+                         "AuditMethod":  "GPO inspection of the Domain Controllers OU (Get-ADHGpoSettingForOu: registry-policy probe, then Security-Options XML fallback). Inherited links from the domain root are included.",
+                         "DCOuDN":  "OU=Domain Controllers,DC=example,DC=local",
+                         "LdapEnforceChannelBinding":  {
+                                                           "Definitions":  [
+                                                                               {
+                                                                                   "GpoName":  "Default Domain Controllers Policy",
+                                                                                   "GpoId":  "6ac1786c-016f-11d2-945f-00c04fb984f9",
+                                                                                   "OuDN":  "OU=Domain Controllers,DC=example,DC=local",
+                                                                                   "Value":  0,
+                                                                                   "Source":  "SecurityOption",
+                                                                                   "LinkEnabled":  true
+                                                                               }
+                                                                           ],
+                                                           "Effective":  0
+                                                       },
+                         "RequiresElevation":  false,
+                         "Problems":  [
+                                          "LDAPServerIntegrity effective value is 1 (need 2)",
+                                          "LdapEnforceChannelBinding effective value is 0 (need 2)"
+                                      ],
+                         "ContributingGpos":  [
+                                                  "Default Domain Controllers Policy"
+                                              ],
+                         "Limitations":  "Reflects policy intent (what GPO will push), not each DC live registry state. A DC that has not yet applied policy, or has a local/manual override, can differ until gpupdate. The on-the-wire LDAP bind probe (Invoke-ADHLdapSigningProbe, akin to LdapRelayScan / NetExec ldap) measures actual behaviour without DC admin; an opt-in on-the-wire probe is on the project roadmap.",
+                         "ElevationContext":  "Reads GPO definitions via RSAT GroupPolicy cmdlets; needs GPO read rights (any authenticated user by default), not local admin on each DC."
+                     },
+        "AffectedObjects":  [
+                                "OU=Domain Controllers,DC=example,DC=local"
+                            ],
+        "RemediationSteps":  "Configure, on a GPO linked to the Domain Controllers OU: \"Domain controller: LDAP server signing requirements\" = Require signing (LDAPServerIntegrity=2) and \"Domain controller: LDAP server channel binding token requirements\" = Always (LdapEnforceChannelBinding=2). WARNING: legacy LDAP clients (some printers, older Linux LDAP code, line-of-business apps) may break. Test first. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-004",
+        "AutoFixAvailable":  true,
+        "FixFunction":  "Set-LDAPSigningEnforced",
+        "References":  [
+                           "https://support.microsoft.com/en-us/topic/2020-2023-and-2024-ldap-channel-binding-and-ldap-signing-requirements-for-windows-active-directory-domain-controller-ad-dc-f0fcae21-e1ae-4ddb-49ca-2bbf91d4cabb",
+                           "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/ldap-signing-rqmts",
+                           "https://github.com/SecureAuthCorp/impacket/blob/master/examples/ntlmrelayx.py",
+                           "MITRE ATT\u0026CK T1557.001"
+                       ],
+        "Timestamp":  "\/Date(1783891876423)\/"
+    },
+    {
+        "CheckId":  "ADH-005",
+        "CheckName":  "IPv6 / mitm6 Mitigations",
+        "Category":  "Relay Defenses",
+        "Severity":  "High",
+        "Status":  "Fail",
+        "Description":  "No GPO firewall rules block: Inbound UDP 546 (DHCPv6 client); Inbound ICMPv6 Type 134 (Router Advertisement); Outbound UDP 546-\u003e547 (DHCPv6 client). Hosts will accept/solicit rogue DHCPv6 or Router Advertisements - mitm6 trivially viable. Switch-level RA/DHCPv6 Guard is preferred but cannot be verified from here.",
+        "Evidence":  {
+                         "AuditMethod":  "GPO firewall-rule enumeration via Get-NetFirewallRule -PolicyStore \"\u003cdomain\u003e\\\u003cgpo\u003e\" (the only API that reads firewall rules out of a GPO; they are not registry.pol/GptTmpl-backed, so Get-GPRegistryValue/Get-GPOReport cannot see them).",
+                         "RequiresElevation":  false,
+                         "Limitations":  "This audit cannot detect switch-level RA Guard / DHCPv6 Guard - those are the preferred mitigation and live on the network gear, not AD. A Pass below only means the GPO-based host firewall fallback (all three Block rules) is present, not that switch-level guards are configured.",
+                         "UDP546RulesFound":  [
+
+                                              ],
+                         "ICMPv6Type134RulesFound":  [
+
+                                                     ],
+                         "ScanErrors":  [
+
+                                        ],
+                         "UDP546OutboundRulesFound":  [
+
+                                                      ]
+                     },
+        "AffectedObjects":  [
+
+                            ],
+        "RemediationSteps":  "Preferred (switch/network): enable IPv6 First-Hop Security on access switches\n  - RA Guard (block rogue Router Advertisements)\n  - DHCPv6 Guard (block rogue DHCPv6 servers)\nThese cannot be audited from AD - confirm with your network team.\n\nFallback (Windows Firewall via GPO - this is what Set-IPv6Mitm6Mitigated\nautomates): create firewall rules on the Invoke-ADHardening Hardening GPO\nthat BLOCK:\n  - Inbound  UDP 546         (DHCPv6 client - DHCPV6-In)\n  - Inbound  ICMPv6 Type 134 (Router Advertisement - ICMPv6-In)\n  - Outbound UDP 546 -\u003e 547   (DHCPv6 client - DHCPV6-Out)\n\nDo not disable IPv6 with the DisabledComponents registry value; Microsoft\ndocuments that as unsupported on modern Windows and it has caused real\nproduction outages.",
+        "AutoFixAvailable":  true,
+        "FixFunction":  "Set-IPv6Mitm6Mitigated",
+        "References":  [
+                           "https://github.com/dirkjanm/mitm6",
+                           "https://www.fox-it.com/nl-en/blog/mitm6-compromising-ipv4-networks-via-ipv6/",
+                           "https://learn.microsoft.com/en-us/windows-server/networking/technologies/ipv6/ipv6-troubleshooting",
+                           "MITRE ATT\u0026CK T1557.002"
+                       ],
+        "Timestamp":  "\/Date(1783891876829)\/"
+    },
+    {
+        "CheckId":  "ADH-006",
+        "CheckName":  "Pre-Windows 2000 Compatible Access cleaned",
+        "Category":  "Legacy Configuration",
+        "Severity":  "Medium",
+        "Status":  "Warning",
+        "Description":  "Pre-Windows 2000 Compatible Access contains Authenticated Users. This is often legitimate (legacy apps) but expands the pre-auth read surface. Review whether any consumer still depends on it before removing.",
+        "Evidence":  {
+                         "AuditMethod":  "AD group membership read",
+                         "RequiresElevation":  false,
+                         "GroupMembers":  [
+                                              {
+                                                  "Name":  "DC01",
+                                                  "SamAccountName":  "DC01$",
+                                                  "SID":  "S-1-5-21-1111111111-2222222222-3333333333-1000",
+                                                  "ObjectClass":  "computer"
+                                              },
+                                              {
+                                                  "Name":  "Authenticated Users",
+                                                  "SamAccountName":  "Authenticated Users",
+                                                  "SID":  "S-1-5-11",
+                                                  "ObjectClass":  null
+                                              }
+                                          ],
+                         "Limitations":  "",
+                         "ProblematicMembers":  [
+                                                    {
+                                                        "Name":  "Authenticated Users",
+                                                        "SID":  "S-1-5-11",
+                                                        "WellKnownName":  "Authenticated Users"
+                                                    }
+                                                ]
+                     },
+        "AffectedObjects":  [
+                                "S-1-5-11"
+                            ],
+        "RemediationSteps":  "Manual review only. The auto-fix does NOT remove Authenticated Users because it breaks line-of-business compatibility frequently. Audit dependencies first (older Citrix, certain SCCM versions, legacy file servers) then remove via ADUC.",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/security-identifiers",
+                           "https://www.thehacker.recipes/ad/movement/builtin-groups#pre-windows-2000-compatible-access",
+                           "MITRE ATT\u0026CK T1087.002"
+                       ],
+        "Timestamp":  "\/Date(1783891876860)\/"
+    },
+    {
+        "CheckId":  "ADH-007",
+        "CheckName":  "Kerberoasting / AS-REP Roasting exposure",
+        "Category":  "Credential Attacks",
+        "Severity":  "High",
+        "Status":  "Fail",
+        "Description":  "1 Kerberoastable account(s), 1 AS-REP roastable account(s); 0 of these are privileged or have aged credentials (\u003e365d).",
+        "Evidence":  {
+                         "RequiresElevation":  false,
+                         "Accounts":  [
+                                          {
+                                              "SamAccountName":  "svc-app1",
+                                              "Exposure":  "Kerberoastable",
+                                              "SPNs":  "MSSQLSvc/dc01.example.local:1433",
+                                              "PrivilegedGroup":  false,
+                                              "PasswordAgeDays":  14,
+                                              "Severity":  "High"
+                                          },
+                                          {
+                                              "SamAccountName":  "svc-app1",
+                                              "Exposure":  "AS-REP roastable",
+                                              "SPNs":  "",
+                                              "PrivilegedGroup":  false,
+                                              "PasswordAgeDays":  14,
+                                              "Severity":  "High"
+                                          }
+                                      ],
+                         "Limitations":  "Detects exposure surface only. Whether each account is actually crackable depends on its password complexity, which we cannot test from inside AD.",
+                         "AuditMethod":  "AD attribute read (no Kerberos ticket requests issued)"
+                     },
+        "AffectedObjects":  [
+                                "svc-app1",
+                                "svc-app1"
+                            ],
+        "RemediationSteps":  "No safe auto-fix - service-account password changes have cascading effects.\n\nFor each Kerberoastable account:\n  1. Rotate the password to \u003e= 25 chars random (effectively un-crackable offline).\n  2. Migrate to a Group Managed Service Account (gMSA) if the consuming service supports it.\n  3. Add highly privileged accounts to the Protected Users group AND mark the account \"sensitive and cannot be delegated\".\n\nFor each AS-REP roastable account:\n  1. Remove DoesNotRequirePreAuth on the account (uncheck \"Do not require Kerberos preauthentication\" in ADUC) - then rotate the password.\n\nTrack this list with Invoke-ADHardening reports over time; aim to reduce the count quarter over quarter.",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://attack.mitre.org/techniques/T1558/003/",
+                           "https://attack.mitre.org/techniques/T1558/004/",
+                           "https://www.specterops.io/assets/resources/Cracking_Kerberos_TGS_Tickets_Using_Kerberoast.pdf",
+                           "https://www.harmj0y.net/blog/activedirectory/roasting-as-reps/"
+                       ],
+        "Timestamp":  "\/Date(1783891876907)\/"
+    },
+    {
+        "CheckId":  "ADH-008",
+        "CheckName":  "Unconstrained Delegation on non-DCs",
+        "Category":  "Delegation",
+        "Severity":  "Critical",
+        "Status":  "Fail",
+        "Description":  "1 non-DC computer(s) and 0 user(s) have unconstrained delegation. Compromise of any of these yields cached TGTs for every authenticating user, including potential paths to domain admin.",
+        "Evidence":  {
+                         "AuditMethod":  "AD attribute read (userAccountControl / TrustedForDelegation)",
+                         "Users":  [
+
+                                   ],
+                         "Computers":  [
+                                           {
+                                               "Name":  "WORKSTATION01",
+                                               "DNSHostName":  "workstation01.example.local",
+                                               "OS":  "Windows 11 Pro",
+                                               "Enabled":  true,
+                                               "LastLogonDate":  "\/Date(1783789729521)\/",
+                                               "DistinguishedName":  "CN=WORKSTATION01,CN=Computers,DC=example,DC=local"
+                                           }
+                                       ],
+                         "RequiresElevation":  false,
+                         "Limitations":  "Detects classic unconstrained delegation only. Resource-Based Constrained Delegation abuses (RBCD via msDS-AllowedToActOnBehalfOfOtherIdentity) are a separate class and should be audited with BloodHound / Get-ADComputer queries on that attribute."
+                     },
+        "AffectedObjects":  [
+                                "workstation01.example.local"
+                            ],
+        "RemediationSteps":  "No safe auto-fix - delegation removal can break legitimate Kerberos services.\n\nFor each affected non-DC computer:\n  1. Verify which service requires delegation. Most legitimately need constrained delegation, not unconstrained.\n  2. Migrate to constrained delegation (Kerberos-only) with msDS-AllowedToDelegateTo limited to specific SPNs, or\n  3. Migrate to resource-based constrained delegation (RBCD), defined on the target rather than the source, or\n  4. If delegation is unnecessary, uncheck \"Trust this computer for delegation to any service\" in ADUC.\n\nFor each affected user:\n  - Almost never legitimate. Remove \"Trust this account for delegation\" in ADUC.\n  - Add highly privileged accounts to the Protected Users group AND mark \"sensitive and cannot be delegated\".",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://attack.mitre.org/techniques/T1558/003/",
+                           "https://posts.specterops.io/hunting-in-active-directory-unconstrained-delegation-forests-trusts-71f2b33688e1",
+                           "https://dirkjanm.io/abusing-forgotten-permissions-on-precreated-computer-objects-in-active-directory/",
+                           "MITRE ATT\u0026CK T1134.001"
+                       ],
+        "Timestamp":  "\/Date(1783891876923)\/"
+    },
+    {
+        "CheckId":  "ADH-009",
+        "CheckName":  "Password Policy Baseline",
+        "Category":  "Account Hardening",
+        "Severity":  "High",
+        "Status":  "Fail",
+        "Description":  "Default domain password policy fails 1 baseline check(s): MinPasswordLength=8",
+        "Evidence":  {
+                         "AuditMethod":  "AD attribute read (Get-ADDefaultDomainPasswordPolicy + Get-ADUser filter)",
+                         "RequiresElevation":  false,
+                         "Limitations":  "Reads the Default Domain Password Policy only. Fine-Grained Password Policies (FGPP) targeting groups/users are not enumerated here - run Get-ADFineGrainedPasswordPolicy separately if they are in use.",
+                         "CurrentPolicy":  {
+                                               "MinPasswordLength":  8,
+                                               "LockoutThreshold":  5,
+                                               "LockoutDurationMinutes":  15,
+                                               "MaxPasswordAgeDays":  0,
+                                               "MinPasswordAgeDays":  0,
+                                               "PasswordHistoryCount":  24,
+                                               "ComplexityEnabled":  true
+                                           },
+                         "PasswordNeverExpires":  {
+                                                      "EnabledAccountCount":  3,
+                                                      "Sample":  [
+                                                                     "Administrator",
+                                                                     "svc-app1",
+                                                                     "jdoe"
+                                                                 ]
+                                                  },
+                         "FailedConditions":  [
+                                                  {
+                                                      "Setting":  "MinPasswordLength",
+                                                      "Current":  8,
+                                                      "Expected":  "\u003e= 14"
+                                                  }
+                                              ]
+                     },
+        "AffectedObjects":  [
+
+                            ],
+        "RemediationSteps":  "Adjust Default Domain Password Policy to meet baseline. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-009. WARNING: tightening MaxPasswordAge or complexity can trigger widespread forced resets.",
+        "AutoFixAvailable":  true,
+        "FixFunction":  "Set-PasswordPolicyBaseline",
+        "References":  [
+                           "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy",
+                           "https://pages.nist.gov/800-63-3/sp800-63b.html",
+                           "MITRE ATT\u0026CK T1110"
+                       ],
+        "Timestamp":  "\/Date(1783891876954)\/"
+    },
+    {
+        "CheckId":  "ADH-010",
+        "CheckName":  "AD CS misconfigurations (ESC1-15)",
+        "Category":  "AD CS",
+        "Severity":  "Critical",
+        "Status":  "Fail",
+        "Description":  "Locksmith 2026.1.4.1426 reported 6 AD CS finding(s) across  Certification Authority/Authorities (see Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV in this run\u0027s report directory for the full list, including DistinguishedName/Fix detail not repeated here).",
+        "Evidence":  {
+                         "AuditMethod":  "Locksmith integration (deferred check) - Invoke-Locksmith -Mode 2, which writes an \"\u003cprefix\u003e ADCSIssues.CSV\" file into this run\u0027s report directory. We parse that CSV for a row count rather than relying on Mode 0\u0027s console-only output. Locksmith makes no AD/CA changes in Modes 0-3; the CSV write is local to the report directory, same as the rest of this audit\u0027s own report artifacts.",
+                         "LocksmithCsvFile":  "Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV",
+                         "CertificateAuthorities":  [
+                                                        {
+                                                            "Name":  "example-DC01-CA",
+                                                            "DNSHostName":  "DC01.example.local",
+                                                            "DN":  "CN=example-DC01-CA,CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=example,DC=local"
+                                                        }
+                                                    ],
+                         "RequiresElevation":  false,
+                         "LocksmithVersion":  "2026.1.4.1426",
+                         "Limitations":  "We defer detection of ESC1-15 to Locksmith. Locksmith itself has known coverage gaps on newer ESCs - cross-check with Certipy if you have suspicions. If the installed Locksmith predates the -OutputPath parameter, or the scan completes without error but writes no CSV, we cannot affirmatively distinguish \"no findings\" from \"nothing captured\" and return Warning rather than a possibly-false Pass.",
+                         "LocksmithAvailable":  true,
+                         "LocksmithRawCount":  6,
+                         "LocksmithFindings":  [
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "DETECT",
+                                                       "Name":  "example-DC01-CA",
+                                                       "Issue":  "Auditing is not fully enabled on DC01.example.local\\example-DC01-CA. Important security events may go unnoticed.",
+                                                       "Risk":  "Medium"
+                                                   },
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "ESC1",
+                                                       "Name":  "Example_Escalation1",
+                                                       "Issue":  "EXAMPLE\\Domain Users can provide a Subject Alternative Name (SAN) while\r\nenrolling in this Client Authentication template, and enrollment does not require\r\nManager Approval.\r\n\r\nThe resultant certificate can be used by an attacker to authenticate as any\r\nprincipal listed in the SAN up to and including Domain Admins, Enterprise Admins,\r\nor Domain Controllers.\r\n\r\nMore info:\r\n  - https://posts.specterops.io/certified-pre-owned-d95910965cd2\r\n",
+                                                       "Risk":  "Critical"
+                                                   },
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "ESC4",
+                                                       "Name":  "Example_Escalation1",
+                                                       "Issue":  "EXAMPLE\\administrator has Owner rights on this template and can\r\nmodify it into a template that can create ESC1, ESC2, and ESC3 templates.\r\n\r\nMore info:\r\n  - https://posts.specterops.io/certified-pre-owned-d95910965cd2\r\n",
+                                                       "Risk":  "Low"
+                                                   },
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "ESC15/EKUwu",
+                                                       "Name":  "User",
+                                                       "Issue":  "User uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Users\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n",
+                                                       "Risk":  "High"
+                                                   },
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "ESC15/EKUwu",
+                                                       "Name":  "EFS",
+                                                       "Issue":  "EFS uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Users\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n",
+                                                       "Risk":  "High"
+                                                   },
+                                                   {
+                                                       "Forest":  "example.local",
+                                                       "Technique":  "ESC15/EKUwu",
+                                                       "Name":  "Machine",
+                                                       "Issue":  "Machine uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Computers\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n",
+                                                       "Risk":  "High"
+                                                   }
+                                               ]
+                     },
+        "AffectedObjects":  [
+                                "DC01.example.local"
+                            ],
+        "RemediationSteps":  "Review the full CSV (Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV) in this run\u0027s report directory, or re-run Locksmith directly for remediation detail and (optionally) its built-in fix modes:\n    Import-Module Locksmith\n    Invoke-Locksmith -Mode 0    # audit-only (re-confirm findings)\n    Invoke-Locksmith -Mode 1    # generate fix scripts (review before applying!)\n\nTemplate fixes need per-template human judgment - Invoke-ADHardening does not auto-fix here by design.",
+        "AutoFixAvailable":  false,
+        "FixFunction":  "",
+        "References":  [
+                           "https://github.com/TrimarcJake/Locksmith",
+                           "https://posts.specterops.io/certified-pre-owned-d95910965cd2",
+                           "https://github.com/GhostPack/Certify",
+                           "https://github.com/ly4k/Certipy"
+                       ],
+        "Timestamp":  "\/Date(1783891878110)\/"
+    }
+]

@@ -1,0 +1,1075 @@
+﻿<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Invoke-ADHardening audit - example.local</title>
+<script>try { var t = localStorage.getItem('adh-theme'); document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark'); } catch (e) {}</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+
+:root {
+  --f-mono: "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, ui-monospace, monospace;
+  --f-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  --ink:   #0B0F16;
+  --slate: #141A24;
+  --rise:  #1A2231;
+  --rule:  #232C3B;
+  --bone:  #DCE3ED;
+  --body:  #AFBACA;
+  --mute:  #8592A6;
+  --dim:   #66748A;
+
+  --jade:   #31D6B4;
+  --brass:  #E8B14B;
+  --rose:   #FF6274;
+  --violet: #B48CFF;
+  --quiet:  #5F6B80;
+
+  --wash: 14%;
+  --lift: none;
+  --pagemax: 1080px;
+}
+
+:root[data-theme="light"] {
+  --ink:   #E7EAF0;
+  --slate: #FFFFFF;
+  --rise:  #F3F5F9;
+  --rule:  #D3D9E2;
+  --bone:  #151A22;
+  --body:  #3B4552;
+  --mute:  #5A6575;
+  --dim:   #798394;
+
+  --jade:   #00697A;
+  --brass:  #A25E00;
+  --rose:   #C2185B;
+  --violet: #6236B8;
+  --quiet:  #8B94A2;
+
+  --wash: 8%;
+  --lift: 0 1px 2px rgba(16,24,40,.05), 0 10px 28px -18px rgba(16,24,40,.35);
+}
+
+[data-sig="jade"]   { --sig: var(--jade); }
+[data-sig="brass"]  { --sig: var(--brass); }
+[data-sig="rose"]   { --sig: var(--rose); }
+[data-sig="violet"] { --sig: var(--violet); }
+[data-sig="quiet"]  { --sig: var(--quiet); }
+
+body {
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--f-sans);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.wrap { max-width: var(--pagemax); margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---- masthead ------------------------------------------------------- */
+
+.top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 24px; padding: 32px 0 0;
+}
+.brand {
+  font-family: var(--f-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--dim);
+}
+.theme {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--mute);
+  background: transparent; border: 1px solid var(--rule); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.theme:hover { color: var(--bone); border-color: var(--dim); }
+.theme .glyph { font-size: 13px; line-height: 1; }
+
+.domain {
+  font-family: var(--f-mono); font-weight: 600;
+  font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1.02;
+  letter-spacing: -.035em; margin: 22px 0 0; color: var(--bone);
+  overflow-wrap: anywhere;
+}
+.headline {
+  font-size: clamp(1.05rem, 2.4vw, 1.4rem); font-weight: 500;
+  margin: 14px 0 0; color: var(--bone);
+}
+.headline .quiet { color: var(--mute); }
+.stamp {
+  font-family: var(--f-mono); font-size: 12px; color: var(--dim);
+  letter-spacing: .04em; margin: 8px 0 0;
+}
+.stamp a { color: var(--mute); text-decoration: none; border-bottom: 1px solid var(--rule); }
+.stamp a:hover { color: var(--bone); border-bottom-color: var(--dim); }
+
+.notice {
+  margin: 24px 0 0; padding: 14px 18px; border-radius: 10px;
+  border: 1px solid var(--sig); background: var(--rise);
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em;
+  color: var(--bone); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+}
+.notice-k { color: var(--sig); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+
+/* ---- next step ------------------------------------------------------ */
+
+.strip {
+  margin: 32px 0 0; padding: 18px 20px;
+  background: var(--rise); border: 1px solid var(--rule); border-radius: 12px;
+}
+.strip-t { margin: 0 0 12px; font-size: 14px; color: var(--mute); }
+.strip-cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.strip-cmd code {
+  font-family: var(--f-mono); font-size: 13px; color: var(--bone);
+  background: var(--ink); border: 1px solid var(--rule); border-radius: 7px;
+  padding: 8px 12px; overflow-wrap: anywhere;
+}
+
+.copy, .ghost-btn {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute); cursor: pointer;
+  background: transparent; border: 1px solid var(--rule); border-radius: 7px;
+  padding: 8px 12px; white-space: nowrap;
+}
+.copy:hover, .ghost-btn:hover { color: var(--bone); border-color: var(--dim); }
+
+/* ---- controls ------------------------------------------------------- */
+
+.controls {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin: 40px 0 0; padding: 14px 0;
+  background: var(--ink); border-bottom: 1px solid var(--rule);
+}
+.chip {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute); cursor: pointer;
+  background: transparent; border: 1px solid var(--rule); border-radius: 999px;
+  padding: 7px 13px; display: inline-flex; align-items: center; gap: 8px;
+}
+.chip:hover:not([disabled]) { color: var(--bone); border-color: var(--dim); }
+.chip[disabled] { opacity: .4; cursor: default; }
+.chip[aria-pressed="true"] {
+  color: var(--bone); border-color: var(--sig, var(--dim));
+  background: color-mix(in srgb, var(--sig, var(--dim)) var(--wash), transparent);
+}
+.chip-n { font-variant-numeric: tabular-nums; color: var(--dim); }
+.chip[aria-pressed="true"] .chip-n { color: var(--bone); }
+.chip-all { --sig: var(--dim); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sig, var(--dim)); flex: none; }
+.chip-all .dot { display: none; }
+
+.spacer { flex: 1 1 auto; }
+.sortwrap {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--dim);
+  padding-left: 16px; border-left: 1px solid var(--rule);
+}
+.sortwrap select {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em;
+  color: var(--bone); background: var(--rise);
+  border: 1px solid var(--rule); border-radius: 7px; padding: 7px 10px; cursor: pointer;
+}
+.readout {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--dim); font-variant-numeric: tabular-nums;
+}
+
+/* ---- records: collapsed by default, open onto the detail ------------ */
+
+.records { display: flex; flex-direction: column; gap: 8px; margin: 20px 0 0; }
+
+.rec {
+  background: var(--slate);
+  border: 1px solid var(--rule); border-left: 3px solid var(--sig);
+  border-radius: 3px 10px 10px 3px; box-shadow: var(--lift);
+  scroll-margin-top: 76px;
+}
+.rec[open] { background: var(--slate); }
+
+.rec-sum {
+  cursor: pointer; list-style: none;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px;
+  padding: 15px 20px;
+}
+.rec-sum::-webkit-details-marker { display: none; }
+.rec-sum::before {
+  content: ">"; font-family: var(--f-mono); font-size: 12px; color: var(--dim);
+  width: 10px; flex: none; align-self: center;
+  transition: transform .16s ease, color .16s ease;
+}
+.rec[open] > .rec-sum::before { transform: rotate(90deg); color: var(--sig); }
+.rec-sum:hover::before { color: var(--sig); }
+.rec-sum:hover .rec-name { color: var(--sig); }
+
+.rec-id {
+  font-family: var(--f-mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .08em; color: var(--bone); flex: none;
+}
+.rec-state {
+  font-family: var(--f-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--sig);
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  min-width: 96px;
+}
+.rec-name {
+  font-size: 16px; font-weight: 600; color: var(--bone);
+  flex: 1 1 260px; min-width: 0; transition: color .16s ease;
+}
+.rec-cat {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--dim); flex: none; margin-left: auto;
+}
+
+.rec-body { padding: 0 20px 20px 46px; }
+.rec-desc { margin: 0; color: var(--body); max-width: 74ch; }
+
+/* before -> after transition (implement report) */
+.flow {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin: 16px 0 0; padding: 10px 14px;
+  background: var(--rise); border: 1px solid var(--rule); border-radius: 10px;
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+}
+.flow-k { color: var(--dim); }
+.flow-a { color: var(--mute); }
+.flow-arrow { color: var(--dim); }
+.flow-b { color: var(--sig); font-weight: 600; }
+.flow-ok { color: var(--jade); font-weight: 600; }
+.flow-no { color: var(--dim); }
+
+.rail { margin: 18px 0 0; border-top: 1px solid var(--rule); padding-top: 14px; display: grid; gap: 10px; }
+.rail-row { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: baseline; }
+.rail-k {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--dim);
+}
+.rail-v { font-size: 13.5px; color: var(--body); max-width: 82ch; }
+.rail-v code { font-family: var(--f-mono); font-size: 12.5px; color: var(--bone); }
+
+.block { margin: 20px 0 0; }
+.block-h {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--dim); font-weight: 600;
+  margin: 0 0 9px; display: flex; align-items: center; gap: 8px;
+}
+.block-n { color: var(--sig); font-variant-numeric: tabular-nums; }
+
+.objs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.objs li {
+  font-family: var(--f-mono); font-size: 12px; color: var(--bone);
+  background: var(--rise); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 5px 9px; overflow-wrap: anywhere;
+}
+
+.steps {
+  white-space: pre-wrap; font-size: 14px; color: var(--bone);
+  background: var(--rise); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 14px 16px; max-width: 92ch; overflow-wrap: anywhere;
+}
+
+.fix {
+  margin: 18px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 10px;
+}
+.fix-tag {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--sig); font-weight: 600;
+}
+.fix-cmd { font-family: var(--f-mono); font-size: 13px; color: var(--bone); overflow-wrap: anywhere; }
+
+.drops { margin: 18px 0 0; border-top: 1px solid var(--rule); }
+.drop { border-bottom: 1px solid var(--rule); }
+.drop summary {
+  cursor: pointer; list-style: none; padding: 11px 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.drop summary::-webkit-details-marker { display: none; }
+.drop summary::before {
+  content: "+"; font-family: var(--f-mono); font-size: 13px; color: var(--dim);
+  width: 12px; text-align: center;
+}
+.drop[open] summary::before { content: "\2212"; }
+.drop summary:hover .drop-t { color: var(--bone); }
+.drop-t {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--mute); font-weight: 600;
+}
+.drop-n { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; color: var(--dim); }
+
+.code {
+  font-family: var(--f-mono); font-size: 12px; line-height: 1.65;
+  background: var(--ink); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 14px 16px; margin: 0 0 14px; color: var(--mute);
+  max-height: 380px; overflow: auto; white-space: pre; tab-size: 2;
+}
+.refs { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
+.refs li { font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; color: var(--mute); }
+.refs a { color: var(--bone); text-decoration: none; border-bottom: 1px solid var(--rule); }
+.refs a:hover { border-bottom-color: var(--sig); }
+
+.empty {
+  text-align: center; padding: 56px 20px; color: var(--mute);
+  border: 1px dashed var(--rule); border-radius: 12px; margin: 20px 0 0;
+}
+
+.foot {
+  margin: 56px 0 0; padding-top: 20px; border-top: 1px solid var(--rule);
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; color: var(--dim);
+  display: flex; flex-wrap: wrap; gap: 6px 20px;
+}
+.foot a { color: var(--mute); text-decoration: none; border-bottom: 1px solid var(--rule); }
+.foot a:hover { color: var(--bone); }
+
+:focus-visible { outline: 2px solid var(--sig, var(--dim)); outline-offset: 2px; }
+
+/* ---- responsive ----------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 16px 64px; }
+  .rec-sum { padding: 14px 16px; gap: 4px 12px; }
+  .rec-name { flex-basis: 100%; }
+  .rec-cat { margin-left: 0; }
+  .rec-body { padding: 0 16px 18px 16px; }
+  .rail-row { grid-template-columns: 1fr; gap: 3px; }
+  .controls { gap: 8px; }
+  .sortwrap { padding-left: 0; border-left: 0; }
+}
+
+/* ---- motion --------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
+}
+
+/* ---- print ---------------------------------------------------------- */
+
+@media print {
+  .controls, .theme, .copy, .ghost-btn { display: none !important; }
+  body { background: #fff; color: #111; }
+  .rec { break-inside: avoid; box-shadow: none; }
+  .rec-body { display: block !important; }
+  .drop[open] .code { max-height: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <span class="brand">Invoke-ADHardening &#183; audit</span>
+    <button type="button" class="theme" id="theme" aria-label="Switch to light theme">
+      <span class="glyph" aria-hidden="true">&#9728;</span><span class="label">Light</span>
+    </button>
+  </header>
+
+  <h1 class="domain">example.local</h1>
+  <p class="headline">8 of 10 checks need attention <span class="quiet">2 passing.</span></p>
+  <p class="stamp">2026-07-26 22:36:46 UTC</p>
+
+  <div class="strip">
+  <p class="strip-t">ADH-003, ADH-004, ADH-005 and ADH-009 have automated fixes. Review them below, then apply all 4:</p>
+  <div class="strip-cmd">
+    <code>Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample</code>
+    <button type="button" class="copy" data-copy="Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample">Copy command</button>
+  </div>
+</div>
+
+  <div class="controls">
+    <button type="button" class="chip chip-all" data-filter="all" aria-pressed="true"><span class="dot"></span>All</button>
+<button type="button" class="chip" data-filter="fail" data-sig="rose"><span class="dot"></span>Fail<span class="chip-n">7</span></button><button type="button" class="chip" data-filter="warn" data-sig="brass"><span class="dot"></span>Warning<span class="chip-n">1</span></button><button type="button" class="chip" data-filter="error" data-sig="violet" disabled><span class="dot"></span>Error<span class="chip-n">0</span></button><button type="button" class="chip" data-filter="pass" data-sig="jade"><span class="dot"></span>Pass<span class="chip-n">2</span></button><button type="button" class="chip" data-filter="na" data-sig="quiet" disabled><span class="dot"></span>N/A<span class="chip-n">0</span></button>
+    <span class="spacer"></span>
+    <span class="readout" id="readout" data-noun="checks">10 checks</span>
+    <button type="button" class="ghost-btn" id="expand" data-mode="expand">Expand all</button>
+    <label class="sortwrap" for="sortby">Sort
+      <select id="sortby">
+        <option value="priority">Status</option>
+        <option value="id">Check ID</option>
+        <option value="category">Category</option>
+      </select>
+    </label>
+  </div>
+
+  <main class="records" id="records">
+<details class="rec" id="ADH-003" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-003" data-cat="Relay Defenses">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-003</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">SMB Signing Required</span>
+    <span class="rec-cat">Relay Defenses</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">SMB signing not enforced by any linked GPO for: client-side (LanmanWorkstation). Hosts will accept unsigned SMB sessions, allowing NTLM relay against SMB.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">GPO inspection: named Security Option (Get-GPOReport XML) first, then registry.pol (Get-GPRegistryValue) fallback.</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">GPO inspection proves the policy exists, not that every host has applied it. A network probe (NetExec smb --gen-relay-list, or a manual SMB negotiate) would measure behaviour per-host; an opt-in on-the-wire probe is on the project roadmap.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">In a GPO linked at the domain level, enable the Security Options &#39;Microsoft network server: Digitally sign communications (always)&#39; and &#39;Microsoft network client: Digitally sign communications (always)&#39;. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-003</div>
+</section>
+    <div class="fix">
+  <span class="fix-tag">Automated fix</span>
+  <code class="fix-cmd">Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-003</code>
+  <button type="button" class="copy" data-copy="Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-003">Copy command</button>
+</div>
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">6 keys</span></summary>
+  <pre class="code">{
+    &quot;ClientSideKey&quot;:  &quot;HKLM\\System\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters\\RequireSecuritySignature&quot;,
+    &quot;ClientSideCovered&quot;:  false,
+    &quot;ServerSideCovered&quot;:  true,
+    &quot;ServerSideKey&quot;:  &quot;HKLM\\System\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\RequireSecuritySignature&quot;,
+    &quot;ClientSideGPOs&quot;:  [
+
+                       ],
+    &quot;ServerSideGPOs&quot;:  [
+                           {
+                               &quot;Name&quot;:  &quot;Default Domain Controllers Policy&quot;,
+                               &quot;Id&quot;:  &quot;6ac1786c-016f-11d2-945f-00c04fb984f9&quot;,
+                               &quot;Side&quot;:  &quot;Server&quot;,
+                               &quot;Source&quot;:  &quot;SecurityOption&quot;,
+                               &quot;LinkedTo&quot;:  [
+                                                &quot;example.local/Domain Controllers&quot;
+                                            ]
+                           }
+                       ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">3</span></summary>
+  <ul class="refs"><li><a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/overview-server-message-block-signing" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/overview-server-message-block-signing</a></li><li><a href="https://techcommunity.microsoft.com/blog/storageatmicrosoft/the-pitfalls-of-smb-signing/3870915" target="_blank" rel="noopener noreferrer">https://techcommunity.microsoft.com/blog/storageatmicrosoft/the-pitfalls-of-smb-signing/3870915</a></li><li>MITRE ATT&amp;CK T1557.001</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-004" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-004" data-cat="Relay Defenses">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-004</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">LDAP Signing + Channel Binding Enforced</span>
+    <span class="rec-cat">Relay Defenses</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">LDAP signing + channel binding is not enforced by Group Policy on the Domain Controllers OU: LDAPServerIntegrity effective value is 1 (need 2); LdapEnforceChannelBinding effective value is 0 (need 2). Unsigned LDAP and unprotected LDAPS sessions allow NTLM relay attacks to escalate to domain admin via tools like ntlmrelayx.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">GPO inspection of the Domain Controllers OU (Get-ADHGpoSettingForOu: registry-policy probe, then Security-Options XML fallback). Inherited links from the domain root are included.</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">Reflects policy intent (what GPO will push), not each DC live registry state. A DC that has not yet applied policy, or has a local/manual override, can differ until gpupdate. The on-the-wire LDAP bind probe (Invoke-ADHLdapSigningProbe, akin to LdapRelayScan / NetExec ldap) measures actual behaviour without DC admin; an opt-in on-the-wire probe is on the project roadmap.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No &#183; Reads GPO definitions via RSAT GroupPolicy cmdlets; needs GPO read rights (any authenticated user by default), not local admin on each DC.</span></div></div>
+    <section class="block">
+  <h3 class="block-h">Affected objects <span class="block-n">1</span></h3>
+  <ul class="objs"><li>OU=Domain Controllers,DC=example,DC=local</li></ul>
+</section>
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">Configure, on a GPO linked to the Domain Controllers OU: &quot;Domain controller: LDAP server signing requirements&quot; = Require signing (LDAPServerIntegrity=2) and &quot;Domain controller: LDAP server channel binding token requirements&quot; = Always (LdapEnforceChannelBinding=2). WARNING: legacy LDAP clients (some printers, older Linux LDAP code, line-of-business apps) may break. Test first. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-004</div>
+</section>
+    <div class="fix">
+  <span class="fix-tag">Automated fix</span>
+  <code class="fix-cmd">Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-004</code>
+  <button type="button" class="copy" data-copy="Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-004">Copy command</button>
+</div>
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">5 keys</span></summary>
+  <pre class="code">{
+    &quot;Problems&quot;:  [
+                     &quot;LDAPServerIntegrity effective value is 1 (need 2)&quot;,
+                     &quot;LdapEnforceChannelBinding effective value is 0 (need 2)&quot;
+                 ],
+    &quot;ContributingGpos&quot;:  [
+                             &quot;Default Domain Controllers Policy&quot;
+                         ],
+    &quot;LDAPServerIntegrity&quot;:  {
+                                &quot;Definitions&quot;:  [
+                                                    {
+                                                        &quot;GpoName&quot;:  &quot;Default Domain Controllers Policy&quot;,
+                                                        &quot;GpoId&quot;:  &quot;6ac1786c-016f-11d2-945f-00c04fb984f9&quot;,
+                                                        &quot;OuDN&quot;:  &quot;OU=Domain Controllers,DC=example,DC=local&quot;,
+                                                        &quot;Value&quot;:  1,
+                                                        &quot;Source&quot;:  &quot;SecurityOption&quot;,
+                                                        &quot;LinkEnabled&quot;:  true
+                                                    }
+                                                ],
+                                &quot;Effective&quot;:  1
+                            },
+    &quot;LdapEnforceChannelBinding&quot;:  {
+                                      &quot;Definitions&quot;:  [
+                                                          {
+                                                              &quot;GpoName&quot;:  &quot;Default Domain Controllers Policy&quot;,
+                                                              &quot;GpoId&quot;:  &quot;6ac1786c-016f-11d2-945f-00c04fb984f9&quot;,
+                                                              &quot;OuDN&quot;:  &quot;OU=Domain Controllers,DC=example,DC=local&quot;,
+                                                              &quot;Value&quot;:  0,
+                                                              &quot;Source&quot;:  &quot;SecurityOption&quot;,
+                                                              &quot;LinkEnabled&quot;:  true
+                                                          }
+                                                      ],
+                                      &quot;Effective&quot;:  0
+                                  },
+    &quot;DCOuDN&quot;:  &quot;OU=Domain Controllers,DC=example,DC=local&quot;
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">4</span></summary>
+  <ul class="refs"><li><a href="https://support.microsoft.com/en-us/topic/2020-2023-and-2024-ldap-channel-binding-and-ldap-signing-requirements-for-windows-active-directory-domain-controller-ad-dc-f0fcae21-e1ae-4ddb-49ca-2bbf91d4cabb" target="_blank" rel="noopener noreferrer">https://support.microsoft.com/en-us/topic/2020-2023-and-2024-ldap-channel-binding-and-ldap-signing-requirements-for-windows-active-directory-domain-controller-ad-dc-f0fcae21-e1ae-4ddb-49ca-2bbf91d4cabb</a></li><li><a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/ldap-signing-rqmts" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/ldap-signing-rqmts</a></li><li><a href="https://github.com/SecureAuthCorp/impacket/blob/master/examples/ntlmrelayx.py" target="_blank" rel="noopener noreferrer">https://github.com/SecureAuthCorp/impacket/blob/master/examples/ntlmrelayx.py</a></li><li>MITRE ATT&amp;CK T1557.001</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-005" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-005" data-cat="Relay Defenses">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-005</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">IPv6 / mitm6 Mitigations</span>
+    <span class="rec-cat">Relay Defenses</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">No GPO firewall rules block: Inbound UDP 546 (DHCPv6 client); Inbound ICMPv6 Type 134 (Router Advertisement); Outbound UDP 546-&gt;547 (DHCPv6 client). Hosts will accept/solicit rogue DHCPv6 or Router Advertisements - mitm6 trivially viable. Switch-level RA/DHCPv6 Guard is preferred but cannot be verified from here.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">GPO firewall-rule enumeration via Get-NetFirewallRule -PolicyStore &quot;&lt;domain&gt;\&lt;gpo&gt;&quot; (the only API that reads firewall rules out of a GPO; they are not registry.pol/GptTmpl-backed, so Get-GPRegistryValue/Get-GPOReport cannot see them).</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">This audit cannot detect switch-level RA Guard / DHCPv6 Guard - those are the preferred mitigation and live on the network gear, not AD. A Pass below only means the GPO-based host firewall fallback (all three Block rules) is present, not that switch-level guards are configured.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">Preferred (switch/network): enable IPv6 First-Hop Security on access switches
+  - RA Guard (block rogue Router Advertisements)
+  - DHCPv6 Guard (block rogue DHCPv6 servers)
+These cannot be audited from AD - confirm with your network team.
+
+Fallback (Windows Firewall via GPO - this is what Set-IPv6Mitm6Mitigated
+automates): create firewall rules on the Invoke-ADHardening Hardening GPO
+that BLOCK:
+  - Inbound  UDP 546         (DHCPv6 client - DHCPV6-In)
+  - Inbound  ICMPv6 Type 134 (Router Advertisement - ICMPv6-In)
+  - Outbound UDP 546 -&gt; 547   (DHCPv6 client - DHCPV6-Out)
+
+Do not disable IPv6 with the DisabledComponents registry value; Microsoft
+documents that as unsupported on modern Windows and it has caused real
+production outages.</div>
+</section>
+    <div class="fix">
+  <span class="fix-tag">Automated fix</span>
+  <code class="fix-cmd">Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-005</code>
+  <button type="button" class="copy" data-copy="Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-005">Copy command</button>
+</div>
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">4 keys</span></summary>
+  <pre class="code">{
+    &quot;UDP546RulesFound&quot;:  [
+
+                         ],
+    &quot;UDP546OutboundRulesFound&quot;:  [
+
+                                 ],
+    &quot;ScanErrors&quot;:  [
+
+                   ],
+    &quot;ICMPv6Type134RulesFound&quot;:  [
+
+                                ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">4</span></summary>
+  <ul class="refs"><li><a href="https://github.com/dirkjanm/mitm6" target="_blank" rel="noopener noreferrer">https://github.com/dirkjanm/mitm6</a></li><li><a href="https://www.fox-it.com/nl-en/blog/mitm6-compromising-ipv4-networks-via-ipv6/" target="_blank" rel="noopener noreferrer">https://www.fox-it.com/nl-en/blog/mitm6-compromising-ipv4-networks-via-ipv6/</a></li><li><a href="https://learn.microsoft.com/en-us/windows-server/networking/technologies/ipv6/ipv6-troubleshooting" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows-server/networking/technologies/ipv6/ipv6-troubleshooting</a></li><li>MITRE ATT&amp;CK T1557.002</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-007" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-007" data-cat="Credential Attacks">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-007</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">Kerberoasting / AS-REP Roasting exposure</span>
+    <span class="rec-cat">Credential Attacks</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">1 Kerberoastable account(s), 1 AS-REP roastable account(s); 0 of these are privileged or have aged credentials (&gt;365d).</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">AD attribute read (no Kerberos ticket requests issued)</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">Detects exposure surface only. Whether each account is actually crackable depends on its password complexity, which we cannot test from inside AD.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    <section class="block">
+  <h3 class="block-h">Affected objects <span class="block-n">2</span></h3>
+  <ul class="objs"><li>svc-app1</li><li>svc-app1</li></ul>
+</section>
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">No safe auto-fix - service-account password changes have cascading effects.
+
+For each Kerberoastable account:
+  1. Rotate the password to &gt;= 25 chars random (effectively un-crackable offline).
+  2. Migrate to a Group Managed Service Account (gMSA) if the consuming service supports it.
+  3. Add highly privileged accounts to the Protected Users group AND mark the account &quot;sensitive and cannot be delegated&quot;.
+
+For each AS-REP roastable account:
+  1. Remove DoesNotRequirePreAuth on the account (uncheck &quot;Do not require Kerberos preauthentication&quot; in ADUC) - then rotate the password.
+
+Track this list with Invoke-ADHardening reports over time; aim to reduce the count quarter over quarter.</div>
+</section>
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">1 keys</span></summary>
+  <pre class="code">{
+    &quot;Accounts&quot;:  [
+                     {
+                         &quot;SamAccountName&quot;:  &quot;svc-app1&quot;,
+                         &quot;Exposure&quot;:  &quot;Kerberoastable&quot;,
+                         &quot;SPNs&quot;:  &quot;MSSQLSvc/dc01.example.local:1433&quot;,
+                         &quot;PrivilegedGroup&quot;:  false,
+                         &quot;PasswordAgeDays&quot;:  14,
+                         &quot;Severity&quot;:  &quot;High&quot;
+                     },
+                     {
+                         &quot;SamAccountName&quot;:  &quot;svc-app1&quot;,
+                         &quot;Exposure&quot;:  &quot;AS-REP roastable&quot;,
+                         &quot;SPNs&quot;:  &quot;&quot;,
+                         &quot;PrivilegedGroup&quot;:  false,
+                         &quot;PasswordAgeDays&quot;:  14,
+                         &quot;Severity&quot;:  &quot;High&quot;
+                     }
+                 ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">4</span></summary>
+  <ul class="refs"><li><a href="https://attack.mitre.org/techniques/T1558/003/" target="_blank" rel="noopener noreferrer">https://attack.mitre.org/techniques/T1558/003/</a></li><li><a href="https://attack.mitre.org/techniques/T1558/004/" target="_blank" rel="noopener noreferrer">https://attack.mitre.org/techniques/T1558/004/</a></li><li><a href="https://www.specterops.io/assets/resources/Cracking_Kerberos_TGS_Tickets_Using_Kerberoast.pdf" target="_blank" rel="noopener noreferrer">https://www.specterops.io/assets/resources/Cracking_Kerberos_TGS_Tickets_Using_Kerberoast.pdf</a></li><li><a href="https://www.harmj0y.net/blog/activedirectory/roasting-as-reps/" target="_blank" rel="noopener noreferrer">https://www.harmj0y.net/blog/activedirectory/roasting-as-reps/</a></li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-008" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-008" data-cat="Delegation">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-008</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">Unconstrained Delegation on non-DCs</span>
+    <span class="rec-cat">Delegation</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">1 non-DC computer(s) and 0 user(s) have unconstrained delegation. Compromise of any of these yields cached TGTs for every authenticating user, including potential paths to domain admin.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">AD attribute read (userAccountControl / TrustedForDelegation)</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">Detects classic unconstrained delegation only. Resource-Based Constrained Delegation abuses (RBCD via msDS-AllowedToActOnBehalfOfOtherIdentity) are a separate class and should be audited with BloodHound / Get-ADComputer queries on that attribute.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    <section class="block">
+  <h3 class="block-h">Affected objects <span class="block-n">1</span></h3>
+  <ul class="objs"><li>workstation01.example.local</li></ul>
+</section>
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">No safe auto-fix - delegation removal can break legitimate Kerberos services.
+
+For each affected non-DC computer:
+  1. Verify which service requires delegation. Most legitimately need constrained delegation, not unconstrained.
+  2. Migrate to constrained delegation (Kerberos-only) with msDS-AllowedToDelegateTo limited to specific SPNs, or
+  3. Migrate to resource-based constrained delegation (RBCD), defined on the target rather than the source, or
+  4. If delegation is unnecessary, uncheck &quot;Trust this computer for delegation to any service&quot; in ADUC.
+
+For each affected user:
+  - Almost never legitimate. Remove &quot;Trust this account for delegation&quot; in ADUC.
+  - Add highly privileged accounts to the Protected Users group AND mark &quot;sensitive and cannot be delegated&quot;.</div>
+</section>
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">2 keys</span></summary>
+  <pre class="code">{
+    &quot;Users&quot;:  [
+
+              ],
+    &quot;Computers&quot;:  [
+                      {
+                          &quot;Name&quot;:  &quot;WORKSTATION01&quot;,
+                          &quot;DNSHostName&quot;:  &quot;workstation01.example.local&quot;,
+                          &quot;OS&quot;:  &quot;Windows 11 Pro&quot;,
+                          &quot;Enabled&quot;:  true,
+                          &quot;LastLogonDate&quot;:  &quot;\/Date(1783789729521)\/&quot;,
+                          &quot;DistinguishedName&quot;:  &quot;CN=WORKSTATION01,CN=Computers,DC=example,DC=local&quot;
+                      }
+                  ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">4</span></summary>
+  <ul class="refs"><li><a href="https://attack.mitre.org/techniques/T1558/003/" target="_blank" rel="noopener noreferrer">https://attack.mitre.org/techniques/T1558/003/</a></li><li><a href="https://posts.specterops.io/hunting-in-active-directory-unconstrained-delegation-forests-trusts-71f2b33688e1" target="_blank" rel="noopener noreferrer">https://posts.specterops.io/hunting-in-active-directory-unconstrained-delegation-forests-trusts-71f2b33688e1</a></li><li><a href="https://dirkjanm.io/abusing-forgotten-permissions-on-precreated-computer-objects-in-active-directory/" target="_blank" rel="noopener noreferrer">https://dirkjanm.io/abusing-forgotten-permissions-on-precreated-computer-objects-in-active-directory/</a></li><li>MITRE ATT&amp;CK T1134.001</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-009" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-009" data-cat="Account Hardening">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-009</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">Password Policy Baseline</span>
+    <span class="rec-cat">Account Hardening</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">Default domain password policy fails 1 baseline check(s): MinPasswordLength=8</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">AD attribute read (Get-ADDefaultDomainPasswordPolicy + Get-ADUser filter)</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">Reads the Default Domain Password Policy only. Fine-Grained Password Policies (FGPP) targeting groups/users are not enumerated here - run Get-ADFineGrainedPasswordPolicy separately if they are in use.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">Adjust Default Domain Password Policy to meet baseline. Run: Invoke-ADHardening -Mode Implement -IncludeCheckIds ADH-009. WARNING: tightening MaxPasswordAge or complexity can trigger widespread forced resets.</div>
+</section>
+    <div class="fix">
+  <span class="fix-tag">Automated fix</span>
+  <code class="fix-cmd">Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-009</code>
+  <button type="button" class="copy" data-copy="Invoke-ADHardening -Mode Implement -ReportPath C:\Users\Administrator\lab\Invoke-ADHardening\Invoke-ADHardening\lab\sample -IncludeCheckIds ADH-009">Copy command</button>
+</div>
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">3 keys</span></summary>
+  <pre class="code">{
+    &quot;PasswordNeverExpires&quot;:  {
+                                 &quot;EnabledAccountCount&quot;:  3,
+                                 &quot;Sample&quot;:  [
+                                                &quot;Administrator&quot;,
+                                                &quot;svc-app1&quot;,
+                                                &quot;jdoe&quot;
+                                            ]
+                             },
+    &quot;FailedConditions&quot;:  [
+                             {
+                                 &quot;Setting&quot;:  &quot;MinPasswordLength&quot;,
+                                 &quot;Current&quot;:  8,
+                                 &quot;Expected&quot;:  &quot;\u003e= 14&quot;
+                             }
+                         ],
+    &quot;CurrentPolicy&quot;:  {
+                          &quot;MinPasswordLength&quot;:  8,
+                          &quot;LockoutThreshold&quot;:  5,
+                          &quot;LockoutDurationMinutes&quot;:  15,
+                          &quot;MaxPasswordAgeDays&quot;:  0,
+                          &quot;MinPasswordAgeDays&quot;:  0,
+                          &quot;PasswordHistoryCount&quot;:  24,
+                          &quot;ComplexityEnabled&quot;:  true
+                      }
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">3</span></summary>
+  <ul class="refs"><li><a href="https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy</a></li><li><a href="https://pages.nist.gov/800-63-3/sp800-63b.html" target="_blank" rel="noopener noreferrer">https://pages.nist.gov/800-63-3/sp800-63b.html</a></li><li>MITRE ATT&amp;CK T1110</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-010" data-sig="rose" data-filter="fail" data-prio="0" data-id="ADH-010" data-cat="AD CS">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-010</span>
+    <span class="rec-state"><span class="dot"></span>Fail</span>
+    <span class="rec-name">AD CS misconfigurations (ESC1-15)</span>
+    <span class="rec-cat">AD CS</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">Locksmith 2026.1.4.1426 reported 6 AD CS finding(s) across  Certification Authority/Authorities (see Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV in this run&#39;s report directory for the full list, including DistinguishedName/Fix detail not repeated here).</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">Locksmith integration (deferred check) - Invoke-Locksmith -Mode 2, which writes an &quot;&lt;prefix&gt; ADCSIssues.CSV&quot; file into this run&#39;s report directory. We parse that CSV for a row count rather than relying on Mode 0&#39;s console-only output. Locksmith makes no AD/CA changes in Modes 0-3; the CSV write is local to the report directory, same as the rest of this audit&#39;s own report artifacts.</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">We defer detection of ESC1-15 to Locksmith. Locksmith itself has known coverage gaps on newer ESCs - cross-check with Certipy if you have suspicions. If the installed Locksmith predates the -OutputPath parameter, or the scan completes without error but writes no CSV, we cannot affirmatively distinguish &quot;no findings&quot; from &quot;nothing captured&quot; and return Warning rather than a possibly-false Pass.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    <section class="block">
+  <h3 class="block-h">Affected objects <span class="block-n">1</span></h3>
+  <ul class="objs"><li>DC01.example.local</li></ul>
+</section>
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">Review the full CSV (Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV) in this run&#39;s report directory, or re-run Locksmith directly for remediation detail and (optionally) its built-in fix modes:
+    Import-Module Locksmith
+    Invoke-Locksmith -Mode 0    # audit-only (re-confirm findings)
+    Invoke-Locksmith -Mode 1    # generate fix scripts (review before applying!)
+
+Template fixes need per-template human judgment - Invoke-ADHardening does not auto-fix here by design.</div>
+</section>
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">6 keys</span></summary>
+  <pre class="code">{
+    &quot;CertificateAuthorities&quot;:  [
+                                   {
+                                       &quot;Name&quot;:  &quot;example-DC01-CA&quot;,
+                                       &quot;DNSHostName&quot;:  &quot;DC01.example.local&quot;,
+                                       &quot;DN&quot;:  &quot;CN=example-DC01-CA,CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=example,DC=local&quot;
+                                   }
+                               ],
+    &quot;LocksmithCsvFile&quot;:  &quot;Locksmith 2026-07-12 02-31-17 ADCSIssues.CSV&quot;,
+    &quot;LocksmithVersion&quot;:  &quot;2026.1.4.1426&quot;,
+    &quot;LocksmithAvailable&quot;:  true,
+    &quot;LocksmithRawCount&quot;:  6,
+    &quot;LocksmithFindings&quot;:  [
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;DETECT&quot;,
+                                  &quot;Name&quot;:  &quot;example-DC01-CA&quot;,
+                                  &quot;Issue&quot;:  &quot;Auditing is not fully enabled on DC01.example.local\\example-DC01-CA. Important security events may go unnoticed.&quot;,
+                                  &quot;Risk&quot;:  &quot;Medium&quot;
+                              },
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;ESC1&quot;,
+                                  &quot;Name&quot;:  &quot;Example_Escalation1&quot;,
+                                  &quot;Issue&quot;:  &quot;EXAMPLE\\Domain Users can provide a Subject Alternative Name (SAN) while\r\nenrolling in this Client Authentication template, and enrollment does not require\r\nManager Approval.\r\n\r\nThe resultant certificate can be used by an attacker to authenticate as any\r\nprincipal listed in the SAN up to and including Domain Admins, Enterprise Admins,\r\nor Domain Controllers.\r\n\r\nMore info:\r\n  - https://posts.specterops.io/certified-pre-owned-d95910965cd2\r\n&quot;,
+                                  &quot;Risk&quot;:  &quot;Critical&quot;
+                              },
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;ESC4&quot;,
+                                  &quot;Name&quot;:  &quot;Example_Escalation1&quot;,
+                                  &quot;Issue&quot;:  &quot;EXAMPLE\\administrator has Owner rights on this template and can\r\nmodify it into a template that can create ESC1, ESC2, and ESC3 templates.\r\n\r\nMore info:\r\n  - https://posts.specterops.io/certified-pre-owned-d95910965cd2\r\n&quot;,
+                                  &quot;Risk&quot;:  &quot;Low&quot;
+                              },
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;ESC15/EKUwu&quot;,
+                                  &quot;Name&quot;:  &quot;User&quot;,
+                                  &quot;Issue&quot;:  &quot;User uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Users\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n&quot;,
+                                  &quot;Risk&quot;:  &quot;High&quot;
+                              },
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;ESC15/EKUwu&quot;,
+                                  &quot;Name&quot;:  &quot;EFS&quot;,
+                                  &quot;Issue&quot;:  &quot;EFS uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Users\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n&quot;,
+                                  &quot;Risk&quot;:  &quot;High&quot;
+                              },
+                              {
+                                  &quot;Forest&quot;:  &quot;example.local&quot;,
+                                  &quot;Technique&quot;:  &quot;ESC15/EKUwu&quot;,
+                                  &quot;Name&quot;:  &quot;Machine&quot;,
+                                  &quot;Issue&quot;:  &quot;Machine uses AD CS Template Schema Version 1, and EXAMPLE\\Domain Computers\r\nis allowed to enroll in this template.\r\n\r\nIf patches for CVE-2024-49019 have not been applied it may be possible to include\r\narbitrary Application Policies while enrolling in this template, including\r\nApplication Policies that permit Client Authentication or allow the creation\r\nof Subordinate CAs.\r\n\r\nMore info:\r\n  - https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc\r\n  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49019\r\n&quot;,
+                                  &quot;Risk&quot;:  &quot;High&quot;
+                              }
+                          ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">4</span></summary>
+  <ul class="refs"><li><a href="https://github.com/TrimarcJake/Locksmith" target="_blank" rel="noopener noreferrer">https://github.com/TrimarcJake/Locksmith</a></li><li><a href="https://posts.specterops.io/certified-pre-owned-d95910965cd2" target="_blank" rel="noopener noreferrer">https://posts.specterops.io/certified-pre-owned-d95910965cd2</a></li><li><a href="https://github.com/GhostPack/Certify" target="_blank" rel="noopener noreferrer">https://github.com/GhostPack/Certify</a></li><li><a href="https://github.com/ly4k/Certipy" target="_blank" rel="noopener noreferrer">https://github.com/ly4k/Certipy</a></li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-006" data-sig="brass" data-filter="warn" data-prio="1" data-id="ADH-006" data-cat="Legacy Configuration">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-006</span>
+    <span class="rec-state"><span class="dot"></span>Warning</span>
+    <span class="rec-name">Pre-Windows 2000 Compatible Access cleaned</span>
+    <span class="rec-cat">Legacy Configuration</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">Pre-Windows 2000 Compatible Access contains Authenticated Users. This is often legitimate (legacy apps) but expands the pre-auth read surface. Review whether any consumer still depends on it before removing.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">AD group membership read</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    <section class="block">
+  <h3 class="block-h">Affected objects <span class="block-n">1</span></h3>
+  <ul class="objs"><li>S-1-5-11</li></ul>
+</section>
+    <section class="block">
+  <h3 class="block-h">Remediation</h3>
+  <div class="steps">Manual review only. The auto-fix does NOT remove Authenticated Users because it breaks line-of-business compatibility frequently. Audit dependencies first (older Citrix, certain SCCM versions, legacy file servers) then remove via ADUC.</div>
+</section>
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">2 keys</span></summary>
+  <pre class="code">{
+    &quot;GroupMembers&quot;:  [
+                         {
+                             &quot;Name&quot;:  &quot;DC01&quot;,
+                             &quot;SamAccountName&quot;:  &quot;DC01$&quot;,
+                             &quot;SID&quot;:  &quot;S-1-5-21-1111111111-2222222222-3333333333-1000&quot;,
+                             &quot;ObjectClass&quot;:  &quot;computer&quot;
+                         },
+                         {
+                             &quot;Name&quot;:  &quot;Authenticated Users&quot;,
+                             &quot;SamAccountName&quot;:  &quot;Authenticated Users&quot;,
+                             &quot;SID&quot;:  &quot;S-1-5-11&quot;,
+                             &quot;ObjectClass&quot;:  null
+                         }
+                     ],
+    &quot;ProblematicMembers&quot;:  [
+                               {
+                                   &quot;Name&quot;:  &quot;Authenticated Users&quot;,
+                                   &quot;SID&quot;:  &quot;S-1-5-11&quot;,
+                                   &quot;WellKnownName&quot;:  &quot;Authenticated Users&quot;
+                               }
+                           ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">3</span></summary>
+  <ul class="refs"><li><a href="https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/security-identifiers" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/security-identifiers</a></li><li><a href="https://www.thehacker.recipes/ad/movement/builtin-groups#pre-windows-2000-compatible-access" target="_blank" rel="noopener noreferrer">https://www.thehacker.recipes/ad/movement/builtin-groups#pre-windows-2000-compatible-access</a></li><li>MITRE ATT&amp;CK T1087.002</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-001" data-sig="jade" data-filter="pass" data-prio="3" data-id="ADH-001" data-cat="Legacy Protocols">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-001</span>
+    <span class="rec-state"><span class="dot"></span>Pass</span>
+    <span class="rec-name">LLMNR Disabled</span>
+    <span class="rec-cat">Legacy Protocols</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">LLMNR is disabled via GPO (1 matching GPO(s) linked).</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">GPO registry-policy read (Get-GPRegistryValue + Get-GPOReport)</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">GPO inspection proves the policy exists, not that every host has applied it. A network probe (Responder analyze mode) would prove behaviour; an opt-in on-the-wire probe is on the project roadmap.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    
+    
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">1 keys</span></summary>
+  <pre class="code">{
+    &quot;MatchingGPOs&quot;:  [
+                         {
+                             &quot;Name&quot;:  &quot;Default Domain Policy&quot;,
+                             &quot;Id&quot;:  &quot;31b2f340-016d-11d2-945f-00c04fb984f9&quot;,
+                             &quot;LinkedTo&quot;:  &quot;example.local&quot;
+                         }
+                     ]
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">2</span></summary>
+  <ul class="refs"><li><a href="https://learn.microsoft.com/en-us/windows-server/networking/dns/deploy/disable-llmnr" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows-server/networking/dns/deploy/disable-llmnr</a></li><li>MITRE ATT&amp;CK T1557.001</li></ul>
+</details></div>
+  </div>
+</details>
+<details class="rec" id="ADH-002" data-sig="jade" data-filter="pass" data-prio="3" data-id="ADH-002" data-cat="Domain Object Settings">
+  <summary class="rec-sum">
+    <span class="rec-id">ADH-002</span>
+    <span class="rec-state"><span class="dot"></span>Pass</span>
+    <span class="rec-name">Machine Account Quota = 0</span>
+    <span class="rec-cat">Domain Object Settings</span>
+  </summary>
+  <div class="rec-body">
+    <p class="rec-desc">ms-DS-MachineAccountQuota is 0. Standard users cannot join machines to the domain.</p>
+    <div class="rail"><div class="rail-row"><span class="rail-k">how this was checked</span><span class="rail-v">AD attribute read (ms-DS-MachineAccountQuota on the domain object)</span></div><div class="rail-row"><span class="rail-k">what this does not prove</span><span class="rail-v">Reads the domain-wide quota only. Per-user override via SeMachineAccountPrivilege is not enumerated here.</span></div><div class="rail-row"><span class="rail-k">needs elevation</span><span class="rail-v">No</span></div></div>
+    
+    
+    
+    <div class="drops"><details class="drop">
+  <summary><span class="drop-t">Evidence</span><span class="drop-n">2 keys</span></summary>
+  <pre class="code">{
+    &quot;MachineAccountQuotaValue&quot;:  0,
+    &quot;DomainDN&quot;:  &quot;DC=example,DC=local&quot;
+}</pre>
+</details><details class="drop">
+  <summary><span class="drop-t">References</span><span class="drop-n">3</span></summary>
+  <ul class="refs"><li><a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/how-to-default-local-accounts" target="_blank" rel="noopener noreferrer">https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/how-to-default-local-accounts</a></li><li><a href="https://www.thehacker.recipes/ad/movement/builtin-groups#ms-ds-machineaccountquota" target="_blank" rel="noopener noreferrer">https://www.thehacker.recipes/ad/movement/builtin-groups#ms-ds-machineaccountquota</a></li><li>MITRE ATT&amp;CK T1136.002</li></ul>
+</details></div>
+  </div>
+</details>
+  </main>
+  <p class="empty" id="empty" hidden>No checks match this filter.</p>
+
+  <footer class="foot">
+    <span>Reports stay local. No telemetry, no upload.</span>
+    <span>Alongside: report.json &#183; report.csv &#183; findings.jsonl &#183; audit.log</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  function attr(el, n) { return el.getAttribute(n) || ''; }
+  function all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+
+  /* Glyphs stay as \u escapes: this JS is embedded in a .ps1 that Windows
+     PowerShell reads as ANSI when it has no BOM, so any literal non-ASCII byte
+     here reaches the browser as mojibake. */
+  var SUN = '\u2600', MOON = '\u263D';
+
+  /* theme ------------------------------------------------------------- */
+  var btn = document.getElementById('theme');
+  if (btn) {
+    var setTheme = function (t) {
+      root.setAttribute('data-theme', t);
+      btn.querySelector('.glyph').textContent = t === 'dark' ? SUN : MOON;
+      btn.querySelector('.label').textContent = t === 'dark' ? 'Light' : 'Dark';
+      btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      try { localStorage.setItem('adh-theme', t); } catch (e) {}
+    };
+    setTheme(root.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+    btn.addEventListener('click', function () {
+      setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  }
+
+  /* filter, sort, expand ---------------------------------------------- */
+  var list = document.getElementById('records');
+  if (!list) { return; }
+
+  var recs = Array.prototype.slice.call(list.querySelectorAll('.rec'));
+  var chips = all('.chip');
+  var sortSel = document.getElementById('sortby');
+  var readout = document.getElementById('readout');
+  var empty = document.getElementById('empty');
+  var expandBtn = document.getElementById('expand');
+  var noun = readout ? (attr(readout, 'data-noun') || 'items') : 'items';
+  var filter = 'all';
+
+  function visible() { return recs.filter(function (r) { return !r.hidden; }); }
+
+  function syncExpandLabel() {
+    if (!expandBtn) { return; }
+    var shown = visible();
+    var allOpen = shown.length > 0 && shown.every(function (r) { return r.open; });
+    expandBtn.textContent = allOpen ? 'Collapse all' : 'Expand all';
+    expandBtn.setAttribute('data-mode', allOpen ? 'collapse' : 'expand');
+  }
+
+  function applyFilter() {
+    var shown = 0;
+    recs.forEach(function (r) {
+      var ok = filter === 'all' || attr(r, 'data-filter') === filter;
+      r.hidden = !ok;
+      if (ok) { shown++; }
+    });
+    if (readout) {
+      readout.textContent = (shown === recs.length ? recs.length : shown + ' of ' + recs.length) + ' ' + noun;
+    }
+    if (empty) { empty.hidden = shown > 0; }
+    chips.forEach(function (c) {
+      c.setAttribute('aria-pressed', String(attr(c, 'data-filter') === filter));
+    });
+    syncExpandLabel();
+  }
+
+  function applySort() {
+    var key = sortSel ? sortSel.value : 'order';
+    recs.slice().sort(function (a, b) {
+      var byId = attr(a, 'data-id').localeCompare(attr(b, 'data-id'));
+      if (key === 'id') { return byId; }
+      if (key === 'order') { return attr(a, 'data-order') - attr(b, 'data-order'); }
+      if (key === 'category') { return attr(a, 'data-cat').localeCompare(attr(b, 'data-cat')) || byId; }
+      return (attr(a, 'data-prio') - attr(b, 'data-prio')) || byId;
+    }).forEach(function (r) { list.appendChild(r); });
+  }
+
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      if (c.hasAttribute('disabled')) { return; }
+      var next = attr(c, 'data-filter');
+      filter = (filter === next && next !== 'all') ? 'all' : next;
+      applyFilter();
+    });
+  });
+  if (sortSel) { sortSel.addEventListener('change', applySort); }
+  if (expandBtn) {
+    expandBtn.addEventListener('click', function () {
+      var open = attr(expandBtn, 'data-mode') !== 'collapse';
+      visible().forEach(function (r) { r.open = open; });
+      syncExpandLabel();
+    });
+  }
+  recs.forEach(function (r) { r.addEventListener('toggle', syncExpandLabel); });
+  applyFilter();
+
+  /* a link to a collapsed check should open it ------------------------ */
+  function openTarget() {
+    if (!window.location.hash) { return; }
+    var t = document.getElementById(window.location.hash.slice(1));
+    if (t && t.classList.contains('rec')) { t.open = true; syncExpandLabel(); }
+  }
+  window.addEventListener('hashchange', openTarget);
+  openTarget();
+
+  /* copy -------------------------------------------------------------- */
+  function flash(b) {
+    var was = b.textContent;
+    b.textContent = 'Copied';
+    setTimeout(function () { b.textContent = was; }, 1400);
+  }
+  function fallbackCopy(text, b) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); flash(b); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  all('.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var text = attr(b, 'data-copy');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { flash(b); }, function () { fallbackCopy(text, b); });
+      } else {
+        fallbackCopy(text, b);
+      }
+    });
+  });
+}());
+</script>
+</body>
+</html>

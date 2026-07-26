@@ -1,0 +1,35 @@
+2026-07-12T21:31:15Z [INFO] Module loaded: ActiveDirectory
+2026-07-12T21:31:15Z [INFO] Module loaded: GroupPolicy
+2026-07-12T21:31:15Z [INFO] Domain: example.local   Forest: example.local
+2026-07-12T21:31:15Z [INFO] Run by: EXAMPLE\administrator        Run at: 2026-07-12 21:31:15 UTC
+2026-07-12T21:31:15Z [CHECK] ADH-001 LLMNR Disabled - starting
+2026-07-12T21:31:16Z [PASS] ADH-001 LLMNR Disabled - PASS
+2026-07-12T21:31:16Z [PASS] ADH-001 LLMNR Disabled: Pass
+2026-07-12T21:31:16Z [CHECK] ADH-002 Machine Account Quota - starting
+2026-07-12T21:31:16Z [PASS] ADH-002 Machine Account Quota - PASS
+2026-07-12T21:31:16Z [PASS] ADH-002 Machine Account Quota = 0: Pass
+2026-07-12T21:31:16Z [CHECK] ADH-003 SMB Signing Required - starting
+2026-07-12T21:31:16Z [FAIL] ADH-003 SMB Signing Required - FAIL (missing: client-side (LanmanWorkstation))
+2026-07-12T21:31:16Z [FAIL] ADH-003 SMB Signing Required: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-004 LDAP Signing + Channel Binding - starting
+2026-07-12T21:31:16Z [FAIL] ADH-004 LDAP Signing + Channel Binding - FAIL (LDAPServerIntegrity effective value is 1 (need 2); LdapEnforceChannelBinding effective value is 0 (need 2))
+2026-07-12T21:31:16Z [FAIL] ADH-004 LDAP Signing + Channel Binding Enforced: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-005 IPv6 / mitm6 mitigations - starting
+2026-07-12T21:31:16Z [FAIL] ADH-005 IPv6 mitm6 - FAIL (missing: Inbound UDP 546 (DHCPv6 client), Inbound ICMPv6 Type 134 (Router Advertisement), Outbound UDP 546->547 (DHCPv6 client))
+2026-07-12T21:31:16Z [FAIL] ADH-005 IPv6 / mitm6 Mitigations: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-006 Pre-Windows 2000 Group - starting
+2026-07-12T21:31:16Z [WARN] ADH-006 Pre-Windows 2000 Group - WARN (Authenticated Users present; manual review)
+2026-07-12T21:31:16Z [WARN] ADH-006 Pre-Windows 2000 Compatible Access cleaned: Warning
+2026-07-12T21:31:16Z [CHECK] ADH-007 Kerberoasting + AS-REP Roasting - starting
+2026-07-12T21:31:16Z [FAIL] ADH-007 Kerberoasting - FAIL (kerb=1, asrep=1, critical=0)
+2026-07-12T21:31:16Z [FAIL] ADH-007 Kerberoasting / AS-REP Roasting exposure: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-008 Unconstrained Delegation - starting
+2026-07-12T21:31:16Z [FAIL] ADH-008 Unconstrained Delegation - FAIL (computers=1, users=0)
+2026-07-12T21:31:16Z [FAIL] ADH-008 Unconstrained Delegation on non-DCs: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-009 Password Policy - starting
+2026-07-12T21:31:16Z [FAIL] ADH-009 Password Policy - FAIL (1 conditions)
+2026-07-12T21:31:16Z [FAIL] ADH-009 Password Policy Baseline: Fail
+2026-07-12T21:31:16Z [CHECK] ADH-010 AD CS misconfigurations - starting
+2026-07-12T21:31:17Z [INFO] ADH-010: invoking Locksmith 2026.1.4.1426 (Mode 2, structured output) against C:\Tools\Invoke-ADHardening\Reports\2026-07-12_143115
+2026-07-12T21:31:18Z [FAIL] ADH-010 AD CS - FAIL (6 Locksmith findings)
+2026-07-12T21:31:18Z [FAIL] ADH-010 AD CS misconfigurations (ESC1-15): Fail
