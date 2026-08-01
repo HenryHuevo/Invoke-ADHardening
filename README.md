@@ -3,9 +3,10 @@
 A PowerShell module that audits Active Directory for the 10 most common
 hardening gaps found on internal pentests, and (opt-in) remediates them.
 
-Each check maps 1:1 to an item in the companion "Ultimate AD Bulletproofing
-Guide" so defenders can read the guide, run the tool, and remediate in a
-tight loop.
+Each check maps 1:1 to an item in the companion video,
+["10 Active Directory Weaknesses I Find in Almost Every Pentest"](https://youtu.be/vXPeJZ7n0Xs),
+so defenders can watch the video, run the tool, and remediate in a tight
+loop.
 
 This is **not** a competitor to PingCastle, Purple Knight, or Locksmith —
 those are credited as prior art in the banner and (for AD CS / ESC*)
@@ -184,7 +185,6 @@ Tests/                           Pester tests — checks, helpers, implement pha
 lab/                             Sample audit artifacts for docs/demos (lab/sample/,
                                  zipped as lab/sample.zip)
 CLAUDE.md                        Contributor / agent documentation
-next_steps.md                    Roadmap of post-1.0 work
 LICENSE                          GNU AGPLv3 license
 ```
 

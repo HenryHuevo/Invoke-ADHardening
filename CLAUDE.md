@@ -2,9 +2,10 @@
 
 PowerShell module that audits Active Directory for the 10 most common
 misconfigurations found on internal pentests, and (opt-in) remediates them.
-Each check maps 1:1 to an item in the companion "Ultimate AD Bulletproofing
-Guide" so defenders can read the guide, run the tool, and remediate in a
-tight loop.
+Each check maps 1:1 to an item in the companion video,
+["10 Active Directory Weaknesses I Find in Almost Every Pentest"](https://youtu.be/vXPeJZ7n0Xs),
+so defenders can watch the video, run the tool, and remediate in a tight
+loop.
 
 The module, manifest, public function, and banner use
 **`Invoke-ADHardening`**, and all internal identifiers use the short
@@ -382,8 +383,8 @@ Reports are local-only. There is no telemetry, no upload, no central server.
 - Sample artifacts — `lab/sample/` holds a captured audit run for docs and
   demos (`lab/sample.zip` is the zipped copy).
 
-See `next_steps.md` for the working backlog. Summary — everything left is
-deliberately post-1.0, not unfinished 1.0 work:
+Working backlog — everything left is deliberately post-1.0, not unfinished
+1.0 work:
 
 - Wire the network probes (`Invoke-ADH*Probe`) in as opt-in behavioural
   confirmation for ADH-001/003/004, handling broadcast-domain scope and
